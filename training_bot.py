@@ -88,11 +88,11 @@ while True:
             command_queue.append(ship.move(Direction.North))
         elif command == 2:
             command_queue.append(ship.move(Direction.East))
-        elif command == 2:
+        elif command == 3:
             command_queue.append(ship.move(Direction.South))
-        else:
+        elif command == 4:
             command_queue.append(ship.move(Direction.West))
-        else command == 0:
+        else:
             command_queue.append(ship.stay_still())
 
         f.write(str(command) + ',' + ','.join(str(item) for item in surroundings) + '\n')

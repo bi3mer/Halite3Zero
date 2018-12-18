@@ -9,3 +9,9 @@ __pycache__/
 *.class
 *.ipr
 *.iws
+
+# ignore training data
+game_training_data/
+
+# ignore replays
+*.hlt
