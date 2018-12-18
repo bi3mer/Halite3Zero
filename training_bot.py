@@ -48,7 +48,7 @@ while True:
     rounded_halite = round_halite(me.halite_amount, 1000000)
 
     for ship in me.get_ships():
-        can_build_drop_off = 1 if current_halite_amount >= 4000 else 0s
+        can_build_drop_off = 1 if current_halite_amount >= 4000 else 0
         surroundings = [rounded_halite, can_build_drop_off]
 
         for y in range(-1 * SIZE, SIZE):
