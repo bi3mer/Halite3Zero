@@ -7,21 +7,13 @@ import random
 import logging
 import hlt
 
-
 game = hlt.Game()
 game.ready("Biemer_Halite3Zero")
 
-# Now that your bot is initialized, save a message to yourself in the log file with some important information.
-#   Here, you log here your id, which you can always fetch from the game object by using my_id.
-logging.info("Successfully created bot! My Player ID is {}.".format(game.my_id))
-
-""" <<<Game Loop>>> """
+data = []
 
 while True:
-    # This loop handles each turn of the game. The game object changes every turn, and you refresh that state by
-    #   running update_frame().
     game.update_frame()
-    # You extract player metadata and the updated map metadata here for convenience.
     me = game.me
     game_map = game.game_map
 
