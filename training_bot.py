@@ -44,9 +44,13 @@ while True:
     dropoff_positions = [d.position for d in list(me.get_dropoffs())] + [me.shipyard]
     ship_positions = [s.position for s in list(me.get_ships())]
 
-    current_halite_amount = round_halite(me.halite_amount, 1000000)
+    current_halite_amount = me.halite_amount
+    rounded_halite = round_halite(me.halite_amount, 1000000)
+
     for ship in me.get_ships():
-        surroundings = [current_halite_amount, round_halite(ship.halite_amount)]
+        can_build_drop_off = 1 if current_halite_amount >= 4000 else 0s
+        surroundings = [rounded_halite, can_build_drop_off]
+
         for y in range(-1 * SIZE, SIZE):
             for x in range(-1 * SIZE, SIZE):
                 current_cell = game_map[ship.position + Position(x, y)]
@@ -74,20 +78,22 @@ while True:
         # replace with net and pass in surroudings and current halite amount
         command = random.choice(commands)
 
-        if command == 0:
-            command_queue.append(ship.stay_still())
-        elif command == 5:
-            # not yet supported
-            command_queue.append(ship.stay_still())
-        else:
-            if command == 1:
-                command_queue.append(ship.move(Direction.North))
-            elif command == 2:
-                command_queue.append(ship.move(Direction.East))
-            elif command == 2:
-                command_queue.append(ship.move(Direction.South))
+        if command == 5:
+            if current_halite_amount >= 4000:
+                current_halite_amount -= 4000
+                command_queue.append(ship.make_dropoff())
             else:
-                command_queue.append(ship.move(Direction.West))
+                command_queue.append(ship.stay_still())
+        elif command == 1:
+            command_queue.append(ship.move(Direction.North))
+        elif command == 2:
+            command_queue.append(ship.move(Direction.East))
+        elif command == 2:
+            command_queue.append(ship.move(Direction.South))
+        else:
+            command_queue.append(ship.move(Direction.West))
+        else command == 0:
+            command_queue.append(ship.stay_still())
 
         f.write(str(command) + ',' + ','.join(str(item) for item in surroundings) + '\n')
         f.flush()
