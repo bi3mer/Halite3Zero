@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Python 3.6
 
-# heavily based one: https://www.youtube.com/watch?v=gCNIGvYbX1c&index=8&list=PLQVvvaa0QuDcJe7DPD0I5J-EDKomQDKsz
+# heavily based one: https://www.youtube.ycom/watch?v=gCNIGvYbX1c&index=8&list=PLQVvvaa0QuDcJe7DPD0I5J-EDKomQDKsz
 #
 # Open Questions:
 # * maybe update this so the player matters when it's four player. Not sure.
@@ -15,12 +15,13 @@ import logging
 import random
 import time
 import hlt
+import sys
 
 game = hlt.Game()
 game.ready("Biemer_Halite3Zero_Training")
 
 SIZE = 16
-f = open(f"game_training_data/{str(time.time()).replace('.', '')}-{game.my_id}-{len(game.players)}.csv", "w")
+f = open(f"game_training_data/{sys.argv[1]}_{game.my_id}.csv", "w")
 
 '''
 0 -> stay still
