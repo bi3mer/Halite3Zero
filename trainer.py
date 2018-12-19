@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # Python 3.6
 
+
 from subprocess import Popen, PIPE
+from sklearn.utils import shuffle
 from tqdm import tqdm
 import subprocess
 import glob
@@ -9,7 +11,7 @@ import os
 
 DIMENSIONS = (32, 40, 48, 56, 64)
 PLAYER_COUNTS = (2, 4)
-GAMES_PER_EPOCH = 4 # 4 * 2 * 4 = 64 games played before training net
+GAMES_PER_EPOCH = 1 # 4 * 2 * 4 = 64 games played before training net
 
 print("Creating game processes")
 processes = []
@@ -60,6 +62,8 @@ for file_name in data_files:
 		y.append(int(line[0]))
 
 	f.close()
+
+x,y = shuffle(x, y)
 
 print("Training nets")
 
