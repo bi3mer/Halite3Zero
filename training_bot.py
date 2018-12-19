@@ -7,19 +7,20 @@
 # * maybe update this so the player matters when it's four player. Not sure.
 # * do we want the width and height of the map in the net?
 
-
 from hlt.positionals import Direction, Position
 from hlt import constants
+from mapdata import MapData
+from Utility import round_halite
 import logging
 import random
-import uuid
+import time
 import hlt
 
 game = hlt.Game()
 game.ready("Biemer_Halite3Zero_Training")
 
 SIZE = 16
-f = open(f"game_training_data/{str(uuid.uuid4())}.csv", "w")
+f = open(f"game_training_data/{str(time.time()).replace('.', '')}-{game.my_id}-{len(game.players)}.csv", "w")
 
 '''
 0 -> stay still
@@ -31,10 +32,6 @@ f = open(f"game_training_data/{str(uuid.uuid4())}.csv", "w")
 '''
 commands = [ 0, 1, 2, 3, 4, 5]
 
-
-def round_halite(halite_amount, max_halite=constants.MAX_HALITE):
-    return round(halite_amount / max_halite, 4)
-
 while True:
     game.update_frame()
     me = game.me
@@ -44,38 +41,26 @@ while True:
     dropoff_positions = [d.position for d in list(me.get_dropoffs())] + [me.shipyard]
     ship_positions = [s.position for s in list(me.get_ships())]
 
+    mapData = MapData(dropoff_positions, ship_positions)
+
     current_halite_amount = me.halite_amount
     rounded_halite = round_halite(me.halite_amount, 1000000)
+    turn_percentage = round_halite(game.turn_number, constants.MAX_TURNS)
 
     for ship in me.get_ships():
         can_build_drop_off = 1 if current_halite_amount >= 4000 else 0
-        surroundings = [rounded_halite, can_build_drop_off]
+        data = [turn_percentage, rounded_halite, can_build_drop_off]
 
         for y in range(-1 * SIZE, SIZE):
             for x in range(-1 * SIZE, SIZE):
-                current_cell = game_map[ship.position + Position(x, y)]
+                halite, potential_ship, structure = mapData.get_data(game_map, ship.position + Position(x,y))
 
-                halite = current_cell.halite_amount
-                halite = 0 if halite == None else round_halite(halite)
-
-                potential_ship = current_cell.ship
-                if potential_ship is None:
-                    potential_ship = 0
-                else: 
-                    ship_friend_foe = 1 if current_cell.position in ship_positions else -1
-                    potential_ship = round_halite(ship_friend_foe * potential_ship.halite_amount)
-
-                structure =  current_cell.structure
-                if structure is None:
-                    structure = 0
-                else:
-                    structure = 1 if current_cell in dropoff_positions else -1
-
-                surroundings.append(halite)
-                surroundings.append(potential_ship)
-                surroundings.append(structure)
+                data.append(halite)
+                data.append(potential_ship)
+                data.append(structure)
 
         # replace with net and pass in surroudings and current halite amount
+        # TODO: apply move commands and make dropoff for map data
         command = random.choice(commands)
 
         if command == 5:
@@ -95,7 +80,7 @@ while True:
         else:
             command_queue.append(ship.stay_still())
 
-        f.write(str(command) + ',' + ','.join(str(item) for item in surroundings) + '\n')
+        f.write(str(command) + ',' + ','.join(str(item) for item in data) + '\n')
         f.flush()
 
     # If the game is in the first 200 turns and you have enough halite, spawn a ship.
