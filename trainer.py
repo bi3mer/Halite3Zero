@@ -50,9 +50,6 @@ print("Creating training data")
 x = []
 y = []
 
-x = []
-y = []
-
 for file_name in data_files:
 	f = open(file_name, 'r')
 
