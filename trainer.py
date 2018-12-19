@@ -57,7 +57,7 @@ for file_name in data_files:
 		line = line.split(',')
 
 		x.append([float(i) for i in line[1:]])
-		y.append(line[0])
+		y.append(int(line[0]))
 
 	f.close()
 
