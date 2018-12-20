@@ -85,7 +85,7 @@ while True:
         f.write(str(command) + ',' + ','.join(str(item) for item in data) + '\n')
         f.flush()
 
-    if me.halite_amount >= 1000 and not game_map[me.shipyard].is_occupied:
+    if me.halite_amount >= 1000 and not game_map[me.shipyard].is_occupied and turn_percentage <= 0.5:
         command_queue.append(me.shipyard.spawn())
 
     # Send your moves back to the game environment, ending this turn.

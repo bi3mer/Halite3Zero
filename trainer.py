@@ -29,9 +29,9 @@ while True:
 	turn_count =  max(20, min(int(iterations/2), 250))
 	print(f'Turns per game {turn_count}')
 
-	for epoch in tqdm(range(GAMES_PER_EPOCH)):
-		for dimension in tqdm(DIMENSIONS):
-			for player_count in tqdm(PLAYER_COUNTS):
+	for epoch in tqdm(range(GAMES_PER_EPOCH), desc='Epoch'):
+		for dimension in tqdm(DIMENSIONS, desc='Dimension'):
+			for player_count in tqdm(PLAYER_COUNTS, desc='Player Count'):
 				cmd = ['./halite', '--replay-directory', 'replays/', '--width', str(dimension), '--height', str(dimension)]
 				
 				if turn_count < 250:
@@ -67,11 +67,11 @@ while True:
 	f.write(f'{halite_collected / float(GAMES_PER_EPOCH * len(DIMENSIONS) * len(PLAYER_COUNTS))}\n')
 	f.close()
 
-	print("Creating training data")
+	# creating training data
 	x = []
 	y = []
 
-	for file_name in tqdm(data_files):
+	for file_name in tqdm(data_files, desc='Training Data'):
 		f = open(file_name, 'r')
 
 		for line in f:
@@ -97,7 +97,7 @@ while True:
 
 	print("Cleaning folders")
 	files = glob.glob('replays/*.hlt') + glob.glob('replays/*.log') + glob.glob('game_training_data/*')
-	for f in files:
+	for f in tqdm(files, desc='Purging Data'):
 	    os.remove(f)
 
 
