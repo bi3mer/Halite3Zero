@@ -16,7 +16,7 @@ from Utility.ShipModel import ShipModel
 
 DIMENSIONS = (32, 40, 48, 56, 64)
 PLAYER_COUNTS = (2, 4)
-GAMES_PER_EPOCH = 4 # 4 * 2 * 4 = 64 games played before training net
+GAMES_PER_EPOCH = 1 # 4 * 2 * 4 = 64 games played before training net
 MIN_HALITE_COLLECTED = 4001
 
 shipModel = ShipModel(True, False)
@@ -28,8 +28,9 @@ def clean_files():
 		os.remove(f)
 
 def train_model(x, y):
+	global iterations
 	if len(y) > 0:
-		shipModel.model.fit(x, y, epochs=4, batch_size=1024)
+		shipModel.model.fit(x, y, epochs=4, batch_size=32)
 		shipModel.save()
 	else:
 		iterations -= 1
@@ -76,7 +77,8 @@ def play_vs_sented(epoch, dimension, player_count, turn_count, replay_name):
 	cmd += ['python3 sentedBot.py' for __ in range(player_count - 1)]
 	return cmd
 
-def run_game(cmd, replay_name, data_files):
+def run_game(cmd, replay_name, data_files, learn_from_self_on_win):
+	# TODO use learn_from_self_on_win
 	process = Popen(cmd, stdout=None, stderr=PIPE)
 	out, err = process.communicate(None, 1200)
 	output = err.decode('ascii').split('\n')
@@ -99,12 +101,13 @@ def run_game(cmd, replay_name, data_files):
 
 	return halite_collected
 
-def run_training_epoch(cmd_generator):
+def run_training_epoch(cmd_generator, learn_from_self_on_win):
+	global iterations
 	total_halite_collected = 0
 	data_files = []
 
 	print(f'ITERATION: {iterations}')
-	turn_count =  max(100, min(int(iterations/2), 250))
+	turn_count =  max(50, min(int(iterations/2), 250))
 	print(f'Turns per game {turn_count}')
 
 	for epoch in tqdm(range(GAMES_PER_EPOCH), desc='Epoch'):
@@ -112,10 +115,10 @@ def run_training_epoch(cmd_generator):
 			for player_count in tqdm(PLAYER_COUNTS, desc='Player Count'):
 				replay_name = f'{epoch}_{dimension}_{player_count}'
 				cmd = cmd_generator(epoch, dimension, player_count, turn_count, replay_name)
-				total_halite_collected += run_game(cmd, replay_name, data_files)
+				total_halite_collected += run_game(cmd, replay_name, data_files, learn_from_self_on_win)
 
 	f = open('halite_collected.nsv', 'a')
-	f.write(f'{halite_collected / float(GAMES_PER_EPOCH * len(DIMENSIONS) * len(PLAYER_COUNTS))}\n')
+	f.write(f'{total_halite_collected / float(GAMES_PER_EPOCH * len(DIMENSIONS) * len(PLAYER_COUNTS))}\n')
 	f.close()
 
 	return data_files
@@ -131,7 +134,7 @@ def main():
 		if iterations > 50:
 			cmd_generator = play_vs_self
 
-		data_files = run_training_epoch(cmd_generator)
+		data_files = run_training_epoch(cmd_generator, True)
 		x, y = create_training_data(data_files)
 		train_model(x, y)
 		clean_files()		
