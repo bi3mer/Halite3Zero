@@ -15,3 +15,6 @@ game_training_data/
 
 # ignore replays
 *.hlt
+
+# ignore models
+models/

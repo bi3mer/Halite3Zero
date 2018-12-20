@@ -17,13 +17,15 @@ import time
 import hlt
 import sys
 
+from ShipModel import ShipModel
+
 game = hlt.Game()
 game.ready("Biemer_Halite3Zero_Training")
 
 SIZE = 16
-f = open(f"game_training_data/{sys.argv[1]}_{game.my_id}.csv", "w")
 
 '''
+COMMANDS
 0 -> stay still
 1 -> North
 2 -> East
@@ -31,7 +33,9 @@ f = open(f"game_training_data/{sys.argv[1]}_{game.my_id}.csv", "w")
 4 -> West
 5 -> construct drop off
 '''
-commands = [ 0, 1, 2, 3, 4, 5]
+
+shipModel = ShipModel(True)
+f = open(f"game_training_data/{sys.argv[1]}_{game.my_id}.csv", "w")
 
 while True:
     game.update_frame()
@@ -60,10 +64,7 @@ while True:
                 data.append(potential_ship)
                 data.append(structure)
 
-        # replace with net and pass in surroudings and current halite amount
-        # TODO: apply move commands and make dropoff for map data
-        command = random.choice(commands)
-
+        command = shipModel.predict(data)
         if command == 5:
             if current_halite_amount >= 4000:
                 current_halite_amount -= 4000
@@ -84,9 +85,7 @@ while True:
         f.write(str(command) + ',' + ','.join(str(item) for item in data) + '\n')
         f.flush()
 
-    # If the game is in the first 200 turns and you have enough halite, spawn a ship.
-    # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-    if game.turn_number <= 200 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
+    if me.halite_amount >= 1000 and not game_map[me.shipyard].is_occupied:
         command_queue.append(me.shipyard.spawn())
 
     # Send your moves back to the game environment, ending this turn.
