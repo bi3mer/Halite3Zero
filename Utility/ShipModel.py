@@ -12,8 +12,11 @@ import tensorflow as tf
 sys.stder = stderr
 
 # reduce memory usage of tensorflow to minimum
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.05)
-sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+# gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.05)
+# sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
 
 # constants
 NUMBER_OF_ACTIONS = 6
