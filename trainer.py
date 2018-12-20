@@ -92,6 +92,7 @@ while True:
 		shipModel.model.fit(x, y, epochs=4, batch_size=1024)
 		shipModel.save()
 	else:
+		iterations -= 1
 		print('No valid training games found in this epoch')
 
 	print("Cleaning folders")
