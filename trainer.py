@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Python 3.6
 
-
 from subprocess import Popen, PIPE
 from sklearn.utils import shuffle
 from tqdm import tqdm
@@ -15,7 +14,8 @@ from ShipModel import ShipModel
 
 DIMENSIONS = (32, 40, 48, 56, 64)
 PLAYER_COUNTS = (2, 4)
-GAMES_PER_EPOCH = 4 # 4 * 2 * 4 = 64 games played before training net
+GAMES_PER_EPOCH = 2 # 4 * 2 * 4 = 64 games played before training net
+MIN_HALITE_COLLECTED = 4001
 
 shipModel = ShipModel(True)
 iterations = -1
@@ -30,8 +30,8 @@ while True:
 	print(f'Turns per game {turn_count}')
 
 	for epoch in tqdm(range(GAMES_PER_EPOCH)):
-		for dimension in DIMENSIONS:
-			for player_count in PLAYER_COUNTS:
+		for dimension in tqdm(DIMENSIONS):
+			for player_count in tqdm(PLAYER_COUNTS):
 				cmd = ['./halite', '--replay-directory', 'replays/', '--width', str(dimension), '--height', str(dimension)]
 				
 				if turn_count < 250:
@@ -46,18 +46,22 @@ while True:
 				out, err = process.communicate(None, 1200)
 				output = err.decode('ascii').split('\n')
 
+				enough_halite_collected = False
 				winning_player = '0'
 				for line in output:
 					if 'rank 1' in line:
-						halite_collected += int(line.split('rank 1')[1].split(' ')[2])
+						halite = int(line.split('rank 1')[1].split(' ')[2])
+						enough_halite_collected = halite >= MIN_HALITE_COLLECTED
+						halite_collected += halite
 						winning_player = line.split(',')[0][-1]
 						break
 
-				file_name = f'game_training_data/{replay_name}_{winning_player}.csv'
-				if os.path.isfile(file_name):
-					data_files.append(file_name)
-				else:
-					print(f'ERROR: {file_name} not found') # means no halite was mined
+				if enough_halite_collected:
+					file_name = f'game_training_data/{replay_name}_{winning_player}.csv'
+					if os.path.isfile(file_name):
+						data_files.append(file_name)
+					else:
+						print(f'ERROR: {file_name} not found') # means no halite was mined
 
 	f = open('halite_collected.nsv', 'a')
 	f.write(f'{halite_collected / float(GAMES_PER_EPOCH * len(DIMENSIONS) * len(PLAYER_COUNTS))}\n')
