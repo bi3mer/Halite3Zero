@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Python 3.6
 
+# TODO live graph argument. If false, save to file to be overwritten
+
 from subprocess import Popen, PIPE
 from sklearn.utils import shuffle
 from tqdm import tqdm
@@ -10,64 +12,30 @@ import os
 import time
 
 import numpy as np
-from ShipModel import ShipModel
+from Utility.ShipModel import ShipModel
 
 DIMENSIONS = (32, 40, 48, 56, 64)
 PLAYER_COUNTS = (2, 4)
-GAMES_PER_EPOCH = 2 # 4 * 2 * 4 = 64 games played before training net
+GAMES_PER_EPOCH = 4 # 4 * 2 * 4 = 64 games played before training net
 MIN_HALITE_COLLECTED = 4001
 
-shipModel = ShipModel(True)
+shipModel = ShipModel(True, False)
 iterations = -1
 
-while True:
-	iterations += 1
-	halite_collected = 0
-	data_files = []
+def clean_files():
+	files = glob.glob('replays/*.hlt') + glob.glob('replays/*.log') + glob.glob('game_training_data/*')
+	for f in tqdm(files, desc='Purging Data'):
+		os.remove(f)
 
-	print(f'ITERATION: {iterations}')
-	turn_count =  max(20, min(int(iterations/2), 250))
-	print(f'Turns per game {turn_count}')
+def train_model(x, y):
+	if len(y) > 0:
+		shipModel.model.fit(x, y, epochs=4, batch_size=1024)
+		shipModel.save()
+	else:
+		iterations -= 1
+		print('No valid training games found in this epoch')
 
-	for epoch in tqdm(range(GAMES_PER_EPOCH), desc='Epoch'):
-		for dimension in tqdm(DIMENSIONS, desc='Dimension'):
-			for player_count in tqdm(PLAYER_COUNTS, desc='Player Count'):
-				cmd = ['./halite', '--replay-directory', 'replays/', '--width', str(dimension), '--height', str(dimension)]
-				
-				if turn_count < 250:
-					cmd.append('--turn-limit')
-					cmd.append(str(turn_count))
-
-				replay_name = f'{epoch}_{dimension}_{player_count}'
-				python_cmd = f"python3 training_bot.py {replay_name}"
-				cmd += [python_cmd for __ in range(player_count)]
-
-				process = Popen(cmd, stdout=None, stderr=PIPE)
-				out, err = process.communicate(None, 1200)
-				output = err.decode('ascii').split('\n')
-
-				enough_halite_collected = False
-				winning_player = '0'
-				for line in output:
-					if 'rank 1' in line:
-						halite = int(line.split('rank 1')[1].split(' ')[2])
-						enough_halite_collected = halite >= MIN_HALITE_COLLECTED
-						halite_collected += halite
-						winning_player = line.split(',')[0][-1]
-						break
-
-				if enough_halite_collected:
-					file_name = f'game_training_data/{replay_name}_{winning_player}.csv'
-					if os.path.isfile(file_name):
-						data_files.append(file_name)
-					else:
-						print(f'ERROR: {file_name} not found') # means no halite was mined
-
-	f = open('halite_collected.nsv', 'a')
-	f.write(f'{halite_collected / float(GAMES_PER_EPOCH * len(DIMENSIONS) * len(PLAYER_COUNTS))}\n')
-	f.close()
-
-	# creating training data
+def create_training_data(data_files):
 	x = []
 	y = []
 
@@ -83,57 +51,90 @@ while True:
 
 		f.close()
 
-	x,y = shuffle(x, y)
 	x = np.array(x)
 	y = np.array(y)
+	return shuffle(x, y)
 
-	print("Training nets")
-	if len(y) > 0:
-		shipModel.model.fit(x, y, epochs=4, batch_size=1024)
-		shipModel.save()
-	else:
-		iterations -= 1
-		print('No valid training games found in this epoch')
+def base_command(epoch, dimension, turn_count):
+	cmd = ['./halite', '--replay-directory', 'replays/', '--width', str(dimension), '--height', str(dimension)]
+	
+	if turn_count < 250:
+		cmd.append('--turn-limit')
+		cmd.append(str(turn_count))
 
-	print("Cleaning folders")
-	files = glob.glob('replays/*.hlt') + glob.glob('replays/*.log') + glob.glob('game_training_data/*')
-	for f in tqdm(files, desc='Purging Data'):
-	    os.remove(f)
+	return cmd
 
+def play_vs_self(epoch, dimension, player_count, turn_count, replay_name):
+	cmd = base_command(epoch, dimension, turn_count)
+	python_cmd = f"python3 training_bot.py {replay_name}"
+	cmd += [python_cmd for __ in range(player_count)]
+	return cmd
 
+def play_vs_sented(epoch, dimension, player_count, turn_count, replay_name):
+	cmd = base_command(epoch, dimension, turn_count)
+	cmd.append(f'python3 training_bot.py {replay_name}')
+	cmd += ['python3 sentedBot.py' for __ in range(player_count - 1)]
+	return cmd
 
+def run_game(cmd, replay_name, data_files):
+	process = Popen(cmd, stdout=None, stderr=PIPE)
+	out, err = process.communicate(None, 1200)
+	output = err.decode('ascii').split('\n')
 
+	halite_collected = 0
+	winning_player = '0'
 
-# for epoch in range(GAMES_PER_EPOCH):
-# 	print("Creating game processes")
-# 	processes = []
+	for line in output:
+		if 'rank 1' in line:
+			halite_collected = int(line.split('rank 1')[1].split(' ')[2])
+			winning_player = line.split(',')[0][-1]
+			break
 
-# 	for dimension in DIMENSIONS:
-# 		for player_count in PLAYER_COUNTS:
-# 			cmd = ['./halite', '--replay-directory', 'replays/', '--width', str(dimension), '--height', str(dimension)]
-# 			replay_name = f'{epoch}_{dimension}_{player_count}'
-# 			replay_names.append(replay_name)
+	if halite_collected >= MIN_HALITE_COLLECTED:
+		file_name = f'game_training_data/{replay_name}_{winning_player}.csv'
+		if os.path.isfile(file_name):
+			data_files.append(file_name)
+		else:
+			print(f'ERROR: {file_name} not found')
 
-# 			for j in range(player_count):
-# 				cmd.append(f"python3 training_bot.py {replay_name}")
+	return halite_collected
 
-# 			processes.append(Popen(cmd, stdout=None, stderr=PIPE))
+def run_training_epoch(cmd_generator):
+	total_halite_collected = 0
+	data_files = []
 
-# 	print("Playing games and figuring out results")
-# 	data_files = []
-# 	for index in range(len(processes)):
-		# out, err = processes[index].communicate(None, 1200)
-		# output = err.decode('ascii').split('\n')
+	print(f'ITERATION: {iterations}')
+	turn_count =  max(100, min(int(iterations/2), 250))
+	print(f'Turns per game {turn_count}')
 
-		# winning_player = '0'
-		# for line in output:
-		# 	if 'rank 1' in line:
-		# 		halite_collected += int(line.split('rank 1')[1].split(' ')[2])
-		# 		winning_player = line.split(',')[0][-1]
-		# 		break
+	for epoch in tqdm(range(GAMES_PER_EPOCH), desc='Epoch'):
+		for dimension in tqdm(DIMENSIONS, desc='Dimension'):
+			for player_count in tqdm(PLAYER_COUNTS, desc='Player Count'):
+				replay_name = f'{epoch}_{dimension}_{player_count}'
+				cmd = cmd_generator(epoch, dimension, player_count, turn_count, replay_name)
+				total_halite_collected += run_game(cmd, replay_name, data_files)
 
-		# file_name = f'game_training_data/{replay_names[index]}_{winning_player}.csv'
-		# if os.path.isfile(file_name):
-		# 	data_files.append(file_name)
-		# else:
-		# 	print(f'ERROR: {file_name} not found') # means no halite was mined
+	f = open('halite_collected.nsv', 'a')
+	f.write(f'{halite_collected / float(GAMES_PER_EPOCH * len(DIMENSIONS) * len(PLAYER_COUNTS))}\n')
+	f.close()
+
+	return data_files
+
+def main():
+	global iterations
+	global shipModel
+
+	while True:
+		iterations += 1
+
+		cmd_generator = play_vs_self # removed sentedbot
+		if iterations > 50:
+			cmd_generator = play_vs_self
+
+		data_files = run_training_epoch(cmd_generator)
+		x, y = create_training_data(data_files)
+		train_model(x, y)
+		clean_files()		
+
+if __name__ == '__main__':
+	main()

@@ -1,4 +1,4 @@
-from Utility import round_halite
+from Utility.Math import round4
 from hlt import constants
 
 # TODO
@@ -15,14 +15,14 @@ class MapData:
 			current_cell = game_map[position]
 
 			halite = current_cell.halite_amount
-			halite = 0 if halite == None else round_halite(halite, constants.MAX_HALITE)
+			halite = 0 if halite == None else round4(halite, constants.MAX_HALITE)
 
 			potential_ship = current_cell.ship
 			if potential_ship is None:
 			    potential_ship = 0
 			else: 
 			    ship_friend_foe = 1 if current_cell.position in self.ship_positions else -1
-			    potential_ship = round_halite(ship_friend_foe * potential_ship.halite_amount, constants.MAX_HALITE)
+			    potential_ship = round4(ship_friend_foe * potential_ship.halite_amount, constants.MAX_HALITE)
 
 			structure =  current_cell.structure
 			if structure is None:
@@ -33,4 +33,9 @@ class MapData:
 			self.data[position] = (halite, potential_ship, structure)
 
 		return self.data[position]
+
+	def contains_structure(self, game_map, position):
+		halite, potential_ship, structure = self.get_data(game_map, position)
+		return structure != 0
+
 

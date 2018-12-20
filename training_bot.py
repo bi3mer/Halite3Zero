@@ -9,15 +9,15 @@
 
 from hlt.positionals import Direction, Position
 from hlt import constants
-from mapdata import MapData
-from Utility import round_halite
+from Utility.MapData import MapData
+from Utility.Math import round4
 import logging
 import random
 import time
 import hlt
 import sys
 
-from ShipModel import ShipModel
+from Utility.ShipModel import ShipModel
 
 game = hlt.Game()
 game.ready("Biemer_Halite3Zero_Training")
@@ -34,7 +34,7 @@ COMMANDS
 5 -> construct drop off
 '''
 
-shipModel = ShipModel(True)
+shipModel = ShipModel(True, True)
 f = open(f"game_training_data/{sys.argv[1]}_{game.my_id}.csv", "w")
 
 while True:
@@ -49,8 +49,8 @@ while True:
     mapData = MapData(dropoff_positions, ship_positions)
 
     current_halite_amount = me.halite_amount
-    rounded_halite = round_halite(me.halite_amount, 1000000)
-    turn_percentage = round_halite(game.turn_number, constants.MAX_TURNS)
+    rounded_halite = round4(me.halite_amount, 1000000)
+    turn_percentage = round4(game.turn_number, constants.MAX_TURNS)
 
     for ship in me.get_ships():
         can_build_drop_off = 1 if current_halite_amount >= 4000 else 0
@@ -66,7 +66,7 @@ while True:
 
         command = shipModel.predict(data)
         if command == 5:
-            if current_halite_amount >= 4000:
+            if current_halite_amount >= 4000 and not mapData.contains_structure(game_map, ship.position):
                 current_halite_amount -= 4000
                 command_queue.append(ship.make_dropoff())
             else:
@@ -85,7 +85,7 @@ while True:
         f.write(str(command) + ',' + ','.join(str(item) for item in data) + '\n')
         f.flush()
 
-    if me.halite_amount >= 1000 and not game_map[me.shipyard].is_occupied and turn_percentage <= 0.5:
+    if me.halite_amount >= 1000 and turn_percentage <= 0.5 and not game_map[me.shipyard].is_occupied:
         command_queue.append(me.shipyard.spawn())
 
     # Send your moves back to the game environment, ending this turn.
