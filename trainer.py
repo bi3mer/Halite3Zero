@@ -17,7 +17,7 @@ from Utility.ShipModel import ShipModel
 
 DIMENSIONS = (32, 40, 48, 56, 64)
 PLAYER_COUNTS = (2, 4)
-GAMES_PER_EPOCH = 1 # 4 * 2 * 4 = 64 games played before training net
+GAMES_PER_EPOCH = 4 # 4 * 2 * 4 = 64 games played before training net
 MIN_HALITE_COLLECTED = 4001
 
 
