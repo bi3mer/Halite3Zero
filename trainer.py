@@ -182,6 +182,7 @@ class Trainer:
 	def phase1(self):
 		self.generate_command = self.play_one_ship_collect
 		self.turn_count = 300
+
 		for i in tqdm(range(5000)):
 			self.replay_name = str(time.time())
 			self.dimension = 32

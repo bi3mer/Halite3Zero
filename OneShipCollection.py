@@ -129,3 +129,5 @@ while True:
 
 	if len(me.get_ships()) < 1 and me.halite_amount >= constants.SHIP_COST:
 		command_queue.append(me.shipyard.spawn())
+
+	game.end_turn(command_queue)
