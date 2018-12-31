@@ -12,6 +12,7 @@ import os
 import json
 import time
 import json
+import sys
 
 import numpy as np
 from Utility.ShipModel import *
@@ -30,6 +31,8 @@ class Trainer:
 		self.iterations = -1
 		self.shipModel = ShipModel(True, False)
 		self.json_file_name = f'models/shipModels/{VERSION}/trainer_info.json'
+		self.default_data_dir = 'game_training_data/'
+		self.data_dir = self.default_data_dir
 
 		if read_from_json and os.path.isfile(self.json_file_name):
 			f = open(self.json_file_name, 'r')
@@ -120,7 +123,7 @@ class Trainer:
 
 	def play_one_ship_collect(self):
 		cmd = self.base_command()
-		cmd.append(f'python3 OneShipCollection.py {self.replay_name}')
+		cmd.append(f'python3 OneShipCollection.py {self.data_dir}{self.replay_name}')
 
 		return cmd
 
@@ -140,7 +143,7 @@ class Trainer:
 				break
 
 		if halite_collected >= MIN_HALITE_COLLECTED:
-			file_name = f'game_training_data/{self.replay_name}_{winning_player}.csv'
+			file_name = os.path.join(self.data_dir, f'{self.replay_name}_{winning_player}.csv')
 			if os.path.isfile(file_name):
 				self.data_files.append(file_name)
 			else:
@@ -179,17 +182,40 @@ class Trainer:
 
 						games_played += 1
 
+	def create_and_check_dir(self):
+		if not os.path.isdir(self.data_dir):
+			os.mkdir(self.data_dir)
+
+		if not os.access(self.data_dir, os.W_OK):
+			print(f'{self.data_dir} does not have write permissions')
+			sys.exit(0)
+
+	def valid_directory_structure(self):
+		halite_dir = '/data/projects/halite/'
+		if not os.path.isdir(halite_dir):
+			print(f'{halite_dir} directory does not exist and is in readonly location.')
+			return False
+		elif not os.access(halite_dir, os.W_OK):
+			print(f'{halite_dir} directory does not have permissions set to allow writing.')
+			return False
+
+		return True
+
 	def phase1(self):
 		self.generate_command = self.play_one_ship_collect
 		self.turn_count = 300
+		self.data_dir = '/data/projects/halite/one_ship_collect/'
+		self.create_and_check_dir()
 
-		for i in tqdm(range(5000)):
+		self.data_files = os.listdir(self.data_dir)
+		self.data_files = [f'{self.data_dir}{file_name}' for file_name in self.data_files]
+
+		for i in tqdm(range(len(self.data_files) - 1, 20000), desc='One Player One Ship Collection Games'):
 			self.replay_name = str(time.time())
-			self.dimension = 32
+			self.dimension = 32	
 			self.run_game()
 
-		if self.iterations >= 3:
-			self.phase1Finished = True
+		self.phase1Finished = True
 
 	def phase2(self):
 		pass
@@ -237,4 +263,7 @@ class Trainer:
 
 if __name__ == '__main__':
 	trainer = Trainer(True)
-	trainer.run_loop()
+
+	if trainer.valid_directory_structure():
+		print('Valid directory structure. Commencing training.')
+		trainer.run_loop()

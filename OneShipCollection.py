@@ -23,7 +23,7 @@ ship_targets = {}
 
 move_directions = [ Direction.North, Direction.South, Direction.East, Direction.West ]
 
-f = open(f"game_training_data/{sys.argv[1]}_{game.my_id}.csv", "w")
+f = open(f"{sys.argv[1]}_{game.my_id}.csv", "w")
 
 def dist(a, b):
 	return abs(a.y - b.y) + abs(a.x - b.x)
