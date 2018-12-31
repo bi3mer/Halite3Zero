@@ -11,7 +11,8 @@ class MapData:
 		self.ship_positions = ship_positions
 
 	def get_data(self, game_map, position):
-		if position not in self.data:
+		hashable_position = (position.x, position.y)
+		if hashable_position not in self.data:
 			current_cell = game_map[position]
 
 			halite = current_cell.halite_amount
@@ -30,9 +31,9 @@ class MapData:
 			else:
 				structure = 1 if current_cell in self.dropoff_positions else -1
 
-			self.data[position] = (halite, potential_ship, structure)
+			self.data[hashable_position] = [halite, potential_ship, structure]
 
-		return self.data[position]
+		return self.data[hashable_position]
 
 	def contains_structure(self, game_map, position):
 		halite, potential_ship, structure = self.get_data(game_map, position)

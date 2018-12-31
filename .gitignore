@@ -12,6 +12,7 @@ __pycache__/
 
 # ignore training data
 game_training_data/
+downloaded_games/
 
 # ignore replays
 *.hlt

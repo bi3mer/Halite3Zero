@@ -1,9 +1,12 @@
+from tensorflow.keras.models import Model
 from tensorflow import keras
 import numpy as np
 import random
 import time
 import sys
 import os
+
+import logging
 
 # change tensorflow output location
 stderr = sys.stderr
@@ -20,7 +23,7 @@ session = tf.Session(config=config)
 
 # constants
 NUMBER_OF_ACTIONS = 6
-VERSION = 'v000'
+VERSION = 'v001'
 RANDOM_EXPLORATION_CHANCE = 0.1
 COMMANDS = [0,1,2,3,4,5]
 
@@ -31,17 +34,37 @@ class ShipModel:
 		trained model. Else set it to false and it will create a new model.
 		'''
 		self.random_exploration_allowed = random_exploration_allowed
-		self.model = keras.Sequential([
-			keras.layers.Dense(3075, activation=tf.nn.relu),
-			keras.layers.Dense(4096, activation=tf.nn.relu),
-			keras.layers.Dense(2048, activation=tf.nn.relu),
-			keras.layers.Dense(1024, activation=tf.nn.relu),
-			keras.layers.Dense(512, activation=tf.nn.relu),
-			keras.layers.Dense(256, activation=tf.nn.relu),
-			keras.layers.Dense(6, activation=tf.nn.softmax)
-		])
 
-		self.model.compile(loss='mse', optimizer='adam', metrics=['mae'])
+		input_layer = keras.layers.Input(shape=(32,32,6,))
+
+		model = keras.layers.Conv2D(32,(3,3))(input_layer)
+		model = keras.layers.Activation('relu')(model)
+
+		model = keras.layers.Conv2D(32,(3,3))(model)
+		model = keras.layers.Activation('relu')(model)
+
+		model = keras.layers.Conv2D(32,(3,3))(model)
+		model = keras.layers.Activation('relu')(model)
+
+		model = keras.layers.MaxPooling2D(pool_size=(2,2))(model)
+
+		model = keras.layers.Conv2D(64,(3,3))(model)
+		model = keras.layers.Activation('relu')(model)
+
+		model = keras.layers.Conv2D(64,(3,3))(model)
+		model = keras.layers.Activation('relu')(model)
+
+		model = keras.layers.Conv2D(64,(3,3))(model)
+		model = keras.layers.Activation('relu')(model)
+
+		model = keras.layers.MaxPooling2D(pool_size=(2,2))(model)
+
+		model = keras.layers.Flatten()(model)
+		model = keras.layers.Dense(6)(model)
+		model = keras.layers.Activation('softmax')(model)
+
+		self.model = Model(input_layer, model)
+		self.model.compile(loss='mse', optimizer='adam', metrics=['mae', 'accuracy'])
 
 		if load_most_recent_model:
 			most_recent_model = 0
@@ -57,8 +80,8 @@ class ShipModel:
 				self.model.load_weights(file_name)
 
 	def predict(self, data):
-		# TODO: have data in this format from the get go
-		predictions = self.model.predict([np.array(data).reshape(1,3075)])[0]
+		image_data = np.expand_dims(np.array(data), axis=0)
+		predictions = self.model.predict(image_data)[0]
 		prediction = np.argmax(predictions)
 
 		if self.random_exploration_allowed and random.random() < RANDOM_EXPLORATION_CHANCE:

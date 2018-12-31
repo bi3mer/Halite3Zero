@@ -35,6 +35,7 @@ COMMANDS
 '''
 
 shipModel = ShipModel(True, True)
+
 f = open(f"game_training_data/{sys.argv[1]}_{game.my_id}.csv", "w")
 
 while True:
@@ -43,10 +44,9 @@ while True:
     game_map = game.game_map
     command_queue = []
 
-    dropoff_positions = [d.position for d in list(me.get_dropoffs())] + [me.shipyard]
-    ship_positions = [s.position for s in list(me.get_ships())]
-
-    mapData = MapData(dropoff_positions, ship_positions)
+    mapData = MapData(
+        [d.position for d in list(me.get_dropoffs())] + [me.shipyard],
+        [s.position for s in list(me.get_ships())])
 
     current_halite_amount = me.halite_amount
     rounded_halite = round4(me.halite_amount, 1000000)
@@ -54,15 +54,14 @@ while True:
 
     for ship in me.get_ships():
         can_build_drop_off = 1 if current_halite_amount >= 4000 else 0
-        data = [turn_percentage, rounded_halite, can_build_drop_off]
+        world_data = [turn_percentage, rounded_halite, can_build_drop_off]
+        data = []
 
         for y in range(-1 * SIZE, SIZE):
+            row = []
             for x in range(-1 * SIZE, SIZE):
-                halite, potential_ship, structure = mapData.get_data(game_map, ship.position + Position(x,y))
-
-                data.append(halite)
-                data.append(potential_ship)
-                data.append(structure)
+                row.append(mapData.get_data(game_map, ship.position + Position(x,y)) + world_data)
+            data.append(row)
 
         command = shipModel.predict(data)
         if command == 5:
@@ -85,7 +84,7 @@ while True:
         f.write(str(command) + ',' + ','.join(str(item) for item in data) + '\n')
         f.flush()
 
-    if me.halite_amount >= 1000 and turn_percentage <= 0.5 and not game_map[me.shipyard].is_occupied:
+    if me.halite_amount >= 1000 and turn_percentage <= 0.8 and len(me.get_ships()) < 4:
         command_queue.append(me.shipyard.spawn())
 
     # Send your moves back to the game environment, ending this turn.

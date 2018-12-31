@@ -9,22 +9,53 @@ from tqdm import tqdm
 import subprocess
 import glob
 import os
+import json
 import time
+import json
 
 import numpy as np
-from Utility.ShipModel import ShipModel
+from Utility.ShipModel import *
 
 
 DIMENSIONS = (32, 40, 48, 56, 64)
 PLAYER_COUNTS = (2, 4)
 GAMES_PER_EPOCH = 4 # 4 * 2 * 4 = 64 games played before training net
 MIN_HALITE_COLLECTED = 4001
-
+#
 
 class Trainer:
-	def __init__(self):
+	def __init__(self, read_from_json):
+		self.games_payed = 0
+		self.halite_collected = 0
 		self.iterations = -1
 		self.shipModel = ShipModel(True, False)
+		self.json_file_name = f'models/shipModels/{VERSION}/trainer_info.json'
+
+		if read_from_json and os.path.isfile(self.json_file_name):
+			f = open(self.json_file_name, 'r')
+			data = json.load(f)
+			f.close()
+
+			self.phase1Finished = data['phase1']
+			self.phase2Finished = data['phase2']
+			self.phase3Finished = data['phase3']
+			self.phase4Finished = data['phase4']
+		else:
+			self.phase1Finished = False
+			self.phase2Finished = False
+			self.phase3Finished = False
+			self.phase4Finished = False
+
+	def save_self_to_json(self):
+		json_self = {}
+		json_self['phase1'] = self.phase1Finished
+		json_self['phase2'] = self.phase2Finished
+		json_self['phase3'] = self.phase3Finished
+		json_self['phase4'] = self.phase4Finished
+
+		f = open(self.json_file_name, 'w')
+		f.write(json.dumps(json_self))
+		f.close()
 
 	def clean_files(self):
 		files = glob.glob('replays/*.hlt') + glob.glob('replays/*.log') + glob.glob('game_training_data/*')
@@ -47,11 +78,10 @@ class Trainer:
 			f = open(file_name, 'r')
 
 			for line in f:
-				line = line.split(',')
-
-				x.append([float(i) for i in line[1:]])
 				y_val = int(line[0])
 				y.append([1 if y_val == i else 0 for i in range(6)])
+
+				x.append(json.loads('[' + line[2:].strip() + ']'))
 
 			f.close()
 
@@ -77,8 +107,20 @@ class Trainer:
 
 	def play_vs_sented(self):
 		cmd = self.base_command()
-		cmd.append(f'python3 training_bot.py {self.replay_name}')
-		cmd += ['python3 sentedBot.py' for __ in range(player_count - 1)]
+		cmd.append(f"python3 training_bot.py {self.replay_name}")
+		cmd += [f'python3 SentedxBot.py {self.replay_name}' for __ in range(self.player_count - 1)]
+
+		return cmd
+
+	def sented_vs_sented(self):
+		cmd = self.base_command()
+		cmd += [f'python3 SentedxBot.py {self.replay_name}' for __ in range(player_count)]
+
+		return cmd
+
+	def play_one_ship_collect(self):
+		cmd = self.base_command()
+		cmd.append(f'python3 OneShipCollection.py {self.replay_name}')
 
 		return cmd
 
@@ -104,7 +146,8 @@ class Trainer:
 			else:
 				print(f'ERROR: {file_name} not found')
 
-		return halite_collected
+		self.halite_collected += halite_collected
+		self.games_played += 1
 
 	def run_training_epoch(self, learn_from_self_on_win):
 		total_halite_collected = 0
@@ -113,31 +156,84 @@ class Trainer:
 		print(f'ITERATION: {self.iterations}')
 		turn_count =  max(50, min(int(self.iterations/2), 250))
 		print(f'Turns per game {turn_count}')
+		valid_games_bar = tqdm(total=100, desc='Valid Games ')
+		valid_games = 0
+		games_played = 0
 
-		for epoch in tqdm(range(GAMES_PER_EPOCH), desc='Epoch'):
-			for dimension in tqdm(DIMENSIONS, desc='Dimension'):
-				for player_count in tqdm(PLAYER_COUNTS, desc='Player Count'):
-					self.player_count = player_count
-					self.dimension = dimension
-					self.epoch = epoch
-					self.turn_count = turn_count
-					self.replay_name = f'{epoch}_{dimension}_{player_count}'
+		while valid_games < 100:
+			for epoch in tqdm(range(GAMES_PER_EPOCH), desc='Epoch       '):
+				for dimension in tqdm(DIMENSIONS, desc='Dimension   '):
+					for player_count in tqdm(PLAYER_COUNTS, desc='Player Count'):
+						self.player_count = player_count
+						self.dimension = dimension
+						self.epoch = epoch
+						self.turn_count = turn_count
+						self.replay_name = f'{time.time()}'
 
-					total_halite_collected += self.run_game()
+						max_halite_collected = self.run_game()
+						total_halite_collected += max_halite_collected
 
-		f = open('halite_collected.nsv', 'a')
-		f.write(f'{total_halite_collected / float(GAMES_PER_EPOCH * len(DIMENSIONS) * len(PLAYER_COUNTS))}\n')
-		f.close()
+						if max_halite_collected >= MIN_HALITE_COLLECTED:
+							valid_games_bar.update(1)
+							valid_games += 1
+
+						games_played += 1
+
+	def phase1(self):
+		self.generate_command = self.play_one_ship_collect
+		self.turn_count = 300
+		for i in tqdm(range(5000)):
+			self.replay_name = str(time.time())
+			self.dimension = 32
+			self.run_game()
+
+		if self.iterations >= 3:
+			self.phase1Finished = True
+
+	def phase2(self):
+		pass
+
+	def phase3(self):
+		pass
+
+	def phase4(self):
+		pass
 
 	def run_loop(self):
 		while True:
 			self.iterations += 1
-			self.generate_command = self.play_vs_self
-			self.run_training_epoch( True)
+			self.games_played = 0
+			self.halite_collected = 0
+			self.data_files = []
+
+			print(f'ITERATION: {self.iterations}')
+			if self.phase1Finished == False:
+				self.phase1()
+			elif self.phase2Finished == False:
+				self.phase2()
+				print("i'm at phase 2 and breaking!")
+				break
+			elif self.phase3Finished == False:
+				self.phase3()
+				break
+			elif self.phase4Finished == False:
+				self.phase4()
+				break
+			else: 
+				print('Finished since there is no phase 5')
+				break
+
+			f = open('halite_collected.nsv', 'a')
+			f.write(f'{self.halite_collected / float(self.games_played)},{self.games_played}\n')
+			f.close()
+
 			x, y = self.create_training_data()
 			self.train_model(x, y)
 			self.clean_files()
+			self.save_self_to_json()
+
+			print('----------------------------------------')
 
 if __name__ == '__main__':
-	trainer = Trainer()
+	trainer = Trainer(True)
 	trainer.run_loop()
