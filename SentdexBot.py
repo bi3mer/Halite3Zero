@@ -64,6 +64,3 @@ while True:
     if not game.turn_number > constants.MAX_TURNS *.75 and len(me.get_ships()) < math.ceil(game.turn_number / 25):
         if me.halite_amount >= 1000 and not game_map[me.shipyard].is_occupied:
             command_queue.append(me.shipyard.spawn())
-
-    # Send your moves back to the game environment, ending this turn.
-    game.end_turn(command_queue)
