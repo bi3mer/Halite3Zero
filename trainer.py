@@ -19,7 +19,7 @@ from Utility.ShipModel import *
 
 DIMENSIONS = (32, 40, 48, 56, 64)
 PLAYER_COUNTS = (2, 4)
-GAMES_PER_EPOCH = 4 # 4 * 2 * 4 = 64 games played before training net
+GAMES_PER_EPOCH = 4
 MIN_HALITE_COLLECTED = 4001
 
 class Trainer:
@@ -44,12 +44,26 @@ class Trainer:
 			self.phase3Finished = data['phase3']
 			self.phase4Finished = data['phase4']
 
+			self.gamma = data['gamma']
+			self.epsilon = data['epsilon']
+			self.epsilon_decay = data['epsilon_decay']
+			self.min_epsilon = data['min_epsilon']
+			self.learning_rate = data['learning_rate']
+			self.batch_size = data['batch_size']
+
 			self.phase_one_training_index = data['phase_one_training_index']
 		else:
 			self.phase1Finished = False
 			self.phase2Finished = False
 			self.phase3Finished = False
 			self.phase4Finished = False
+
+			self.gamma = 0.95
+			self.epsilon = 1.000
+			self.epsilon_decay = 0.99
+			self.min_epsilon = 0.1
+			self.learning_rate = 0.001
+			self.batch_size = 512
 
 			self.phase_one_training_index = 0
 
@@ -59,6 +73,13 @@ class Trainer:
 		json_self['phase2'] = self.phase2Finished
 		json_self['phase3'] = self.phase3Finished
 		json_self['phase4'] = self.phase4Finished
+
+		json_self['gamma'] = self.gamma
+		json_self['epsilon'] = self.epsilon
+		json_self['epsilon_decay'] = self.epsilon_decay
+		json_self['min_epsilon'] = self.min_epsilon
+		json_self['learning_rate'] = self.learning_rate
+		json_self['batch_size'] = self.batch_size
 
 		json_self['phase_one_training_index'] = self.phase_one_training_index
 
@@ -72,22 +93,26 @@ class Trainer:
 			os.remove(f)
 
 	def create_training_data(self, file_names):
-		x = []
-		y = []
+		x = [] # input data
+		y = [] # command
+		r = [] # reward
 
 		for file_name in tqdm(file_names, desc='Collecting Training Data', ascii=True):
+			reward = float(file_name.split('_')[-2]) / 1000
 			f = open(file_name, 'r')
 
 			for line in f:
 				y_val = int(line[0])
-				y.append([1 if y_val == i else 0 for i in range(6)])
 
+				y.append([1 if y_val == i else 0 for i in range(6)])
 				x.append(json.loads('[' + line[2:].strip() + ']'))
+				r.append(reward)
 
 			f.close()
 
 		x = np.array(x)
 		y = np.array(y)
+
 		return shuffle(x, y)
 
 	def base_command(self):
@@ -141,7 +166,7 @@ class Trainer:
 			print(f'{current_iteration} out of {total_iterations}')
 			x, y = self.create_training_data(files)
 			
-			self.shipModel.model.fit(x, y, epochs=4, batch_size=512)
+			self.shipModel.model.fit(x, y, epochs=4, batch_size=self.batch_size)
 			self.shipModel.save()
 			current_iteration += 1
 			update_training_index(current_iteration)
@@ -183,7 +208,11 @@ class Trainer:
 		if halite_collected >= MIN_HALITE_COLLECTED:
 			file_name = os.path.join(self.data_dir, f'{self.replay_name}_{winning_player}.csv')
 			if os.path.isfile(file_name):
-				self.data_files.append(file_name)
+				# rename file to include the halite collected
+				new_file_name = os.path.join(self.data_dir, f'{self.replay_name}_{halite_collected}_{winning_player}.csv')
+				os.rename(file_name, new_file_name)
+
+				self.data_files.append(new_file_name)
 			else:
 				print(f'ERROR: {file_name} not found')
 
@@ -250,7 +279,7 @@ class Trainer:
 		self.data_files = os.listdir(self.data_dir)
 		self.data_files = [f'{self.data_dir}{file_name}' for file_name in self.data_files]
 
-		for i in tqdm(range(len(self.data_files) - 1, 20000), desc='One Player One Ship Collection Games'):
+		for i in tqdm(range(len(self.data_files) - 1, 15000), desc='One Player One Ship Collection Games', ascii=True):
 			self.replay_name = str(time.time())
 			self.dimension = 32	
 			self.run_game()

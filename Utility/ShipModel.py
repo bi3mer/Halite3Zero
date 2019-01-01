@@ -46,6 +46,9 @@ class ShipModel:
 		model = keras.layers.Conv2D(32,(3,3))(model)
 		model = keras.layers.Activation('relu')(model)
 
+		model = keras.layers.Conv2D(32,(3,3))(model)
+		model = keras.layers.Activation('relu')(model)
+
 		model = keras.layers.MaxPooling2D(pool_size=(2,2))(model)
 
 		model = keras.layers.Conv2D(64,(3,3))(model)
@@ -88,6 +91,9 @@ class ShipModel:
 			predictions = random.choice(COMMANDS)
 
 		return prediction
+
+	def get_random_action(self):
+		return random.choice(COMMANDS)
 
 	def save(self):
 		self.model.save_weights(f'models/shipModels/{VERSION}/{int(time.time())}')
