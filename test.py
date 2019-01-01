@@ -10,17 +10,19 @@ import random
 
 # import tensorflow as tf
 
-def chunker(l, return_list_size):
-	i = 0
+def chunker(l, return_list_size, current_index):
+	i = current_index * return_list_size
 	while i < len(l):
 		new_i = i + return_list_size
 		yield l[i:new_i]
 		i = new_i
 
-li = [random.random() for i in range(int(1000 + random.random() * 1000))]
-tqdm_bar = tqdm(total=int(len(li) / 100) + 1)
-for l in chunker(li, 100):
-	tqdm_bar.update(1)
+current_index = 600
+li = [i for i in range(12050)]
+# tqdm_bar = tqdm(total=int(len(li) / 20) + 1 - current_index)
+for l in chunker(li, 20, current_index):
+	print(l)
+	# tqdm_bar.update(1)
 	time.sleep(0.1)
 
 # for i in tqdm(range(50, 100)):

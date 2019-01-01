@@ -32,6 +32,7 @@ class Trainer:
 		self.base_dir = '/media/colanbiemer/My Passport/data/halite/'
 		self.default_data_dir = 'game_training_data/'
 		self.data_dir = self.default_data_dir
+		self.phase_one_training_index = 0
 
 		if read_from_json and os.path.isfile(self.json_file_name):
 			f = open(self.json_file_name, 'r')
@@ -42,11 +43,15 @@ class Trainer:
 			self.phase2Finished = data['phase2']
 			self.phase3Finished = data['phase3']
 			self.phase4Finished = data['phase4']
+
+			self.phase_one_training_index = data['phase_one_training_index']
 		else:
 			self.phase1Finished = False
 			self.phase2Finished = False
 			self.phase3Finished = False
 			self.phase4Finished = False
+
+			self.phase_one_training_index = 0
 
 	def save_self_to_json(self):
 		json_self = {}
@@ -54,6 +59,8 @@ class Trainer:
 		json_self['phase2'] = self.phase2Finished
 		json_self['phase3'] = self.phase3Finished
 		json_self['phase4'] = self.phase4Finished
+
+		json_self['phase_one_training_index'] = self.phase_one_training_index
 
 		f = open(self.json_file_name, 'w')
 		f.write(json.dumps(json_self))
@@ -118,39 +125,45 @@ class Trainer:
 
 		return cmd
 
-	def chunker(self, l, return_list_size):
-		i = 0
+	def chunker(self, l, return_list_size, current_index):
+		i = current_index * return_list_size
 		while i < len(l):
 			new_i = i + return_list_size
 			yield l[i:new_i]
 			i = new_i
 
-	def train(self):
-		files_allowed = 100
+	def train(self, current_training_index, update_training_index):
+		files_allowed = 115
 		total_iterations = int(len(self.data_files) / files_allowed) + 1
-		current_iteration = 0
-		for files in self.chunker(self.data_files, files_allowed):
+		current_iteration = current_training_index
+
+		for files in self.chunker(self.data_files, files_allowed, current_iteration):
 			print(f'{current_iteration} out of {total_iterations}')
 			x, y = self.create_training_data(files)
 			
-			self.shipModel.model.fit(x, y, epochs=4, batch_size=32)
+			self.shipModel.model.fit(x, y, epochs=4, batch_size=512)
 			self.shipModel.save()
 			current_iteration += 1
+			update_training_index(current_iteration)
+			self.save_self_to_json()
 
 	def q_learn(self):
 		print('q learning is not implemented')
 		sys.exit(0)	
 
-		files_allowed = 100
+		files_allowed = 115
 		total_iterations = int(len(self.data_files) / files_allowed) + 1
-		current_iteration = 0
-		for files in self.chunker(self.data_files, files_allowed):
+		current_iteration = current_training_index
+
+		for files in self.chunker(self.data_files, files_allowed, current_iteration):
 			print(f'{current_iteration} out of {total_iterations}')
 			x, y = self.create_training_data(files)
-
-			self.shipModel.model.fit(x, y, epochs=4, batch_size=32)
+			
+			self.shipModel.model.fit(x, y, epochs=4, batch_size=512)
 			self.shipModel.save()
-			current_iteration += 1	
+			current_iteration += 1
+			update_training_index(current_iteration)
+			self.save_self_to_json()
 
 	def run_game(self):
 		# TODO use learn_from_self_on_win
@@ -192,11 +205,11 @@ class Trainer:
 			for epoch in tqdm(range(GAMES_PER_EPOCH), desc='Epoch       '):
 				for dimension in tqdm(DIMENSIONS, desc='Dimension   '):
 					for player_count in tqdm(PLAYER_COUNTS, desc='Player Count'):
+						self.replay_name = f'{time.time()}'
 						self.player_count = player_count
+						self.turn_count = turn_count
 						self.dimension = dimension
 						self.epoch = epoch
-						self.turn_count = turn_count
-						self.replay_name = f'{time.time()}'
 
 						max_halite_collected = self.run_game()
 						total_halite_collected += max_halite_collected
@@ -225,6 +238,9 @@ class Trainer:
 
 		return True
 
+	def update_phase_one_iteration(self, iteration):
+		self.phase_one_training_index = iteration
+
 	def phase1(self):
 		self.generate_command = self.play_one_ship_collect
 		self.turn_count = 300
@@ -242,7 +258,7 @@ class Trainer:
 			if i % 1000 == 0:
 				self.clean_files()
 
-		self.train()
+		self.train(self.phase_one_training_index, self.update_phase_one_iteration)
 		self.phase1Finished = True
 
 	def phase2(self):
