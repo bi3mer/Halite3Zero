@@ -17,12 +17,10 @@ import sys
 import numpy as np
 from Utility.ShipModel import *
 
-
 DIMENSIONS = (32, 40, 48, 56, 64)
 PLAYER_COUNTS = (2, 4)
 GAMES_PER_EPOCH = 4 # 4 * 2 * 4 = 64 games played before training net
 MIN_HALITE_COLLECTED = 4001
-#
 
 class Trainer:
 	def __init__(self, read_from_json):
@@ -31,6 +29,7 @@ class Trainer:
 		self.iterations = -1
 		self.shipModel = ShipModel(True, False)
 		self.json_file_name = f'models/shipModels/{VERSION}/trainer_info.json'
+		self.base_dir = '/media/colanbiemer/My Passport/data/halite/'
 		self.default_data_dir = 'game_training_data/'
 		self.data_dir = self.default_data_dir
 
@@ -65,19 +64,11 @@ class Trainer:
 		for f in tqdm(files, desc='Purging Data'):
 			os.remove(f)
 
-	def train_model(self, x, y):
-		if len(y) > 0:
-			self.shipModel.model.fit(x, y, epochs=4, batch_size=32)
-			self.shipModel.save()
-		else:
-			self.iterations -= 1
-			print('No valid training games found in this epoch')
-
-	def create_training_data(self):
+	def create_training_data(self, file_names):
 		x = []
 		y = []
 
-		for file_name in tqdm(self.data_files, desc='Training Data'):
+		for file_name in tqdm(file_names, desc='Collecting Training Data', ascii=True):
 			f = open(file_name, 'r')
 
 			for line in f:
@@ -123,9 +114,43 @@ class Trainer:
 
 	def play_one_ship_collect(self):
 		cmd = self.base_command()
-		cmd.append(f'python3 OneShipCollection.py {self.data_dir}{self.replay_name}')
+		cmd.append(f'python3 OneShipCollection.py "{os.path.join(self.data_dir, self.replay_name)}"')
 
 		return cmd
+
+	def chunker(self, l, return_list_size):
+		i = 0
+		while i < len(l):
+			new_i = i + return_list_size
+			yield l[i:new_i]
+			i = new_i
+
+	def train(self):
+		files_allowed = 100
+		total_iterations = int(len(self.data_files) / files_allowed) + 1
+		current_iteration = 0
+		for files in self.chunker(self.data_files, files_allowed):
+			print(f'{current_iteration} out of {total_iterations}')
+			x, y = self.create_training_data(files)
+			
+			self.shipModel.model.fit(x, y, epochs=4, batch_size=32)
+			self.shipModel.save()
+			current_iteration += 1
+
+	def q_learn(self):
+		print('q learning is not implemented')
+		sys.exit(0)	
+
+		files_allowed = 100
+		total_iterations = int(len(self.data_files) / files_allowed) + 1
+		current_iteration = 0
+		for files in self.chunker(self.data_files, files_allowed):
+			print(f'{current_iteration} out of {total_iterations}')
+			x, y = self.create_training_data(files)
+
+			self.shipModel.model.fit(x, y, epochs=4, batch_size=32)
+			self.shipModel.save()
+			current_iteration += 1	
 
 	def run_game(self):
 		# TODO use learn_from_self_on_win
@@ -191,12 +216,11 @@ class Trainer:
 			sys.exit(0)
 
 	def valid_directory_structure(self):
-		halite_dir = '/data/projects/halite/'
-		if not os.path.isdir(halite_dir):
-			print(f'{halite_dir} directory does not exist and is in readonly location.')
+		if not os.path.isdir(self.base_dir):
+			print(f'{self.base_dir} directory does not exist and is in readonly location.')
 			return False
-		elif not os.access(halite_dir, os.W_OK):
-			print(f'{halite_dir} directory does not have permissions set to allow writing.')
+		elif not os.access(self.base_dir, os.W_OK):
+			print(f'{self.base_dir} directory does not have permissions set to allow writing.')
 			return False
 
 		return True
@@ -204,7 +228,7 @@ class Trainer:
 	def phase1(self):
 		self.generate_command = self.play_one_ship_collect
 		self.turn_count = 300
-		self.data_dir = '/data/projects/halite/one_ship_collect/'
+		self.data_dir = os.path.join(self.base_dir, 'one_ship_collect/')
 		self.create_and_check_dir()
 
 		self.data_files = os.listdir(self.data_dir)
@@ -215,6 +239,10 @@ class Trainer:
 			self.dimension = 32	
 			self.run_game()
 
+			if i % 1000 == 0:
+				self.clean_files()
+
+		self.train()
 		self.phase1Finished = True
 
 	def phase2(self):
@@ -250,12 +278,11 @@ class Trainer:
 				print('Finished since there is no phase 5')
 				break
 
-			f = open('halite_collected.nsv', 'a')
-			f.write(f'{self.halite_collected / float(self.games_played)},{self.games_played}\n')
-			f.close()
+			if self.games_played > 0:
+				f = open('halite_collected.nsv', 'a')
+				f.write(f'{self.halite_collected / float(self.games_played)},{self.games_played}\n')
+				f.close()
 
-			x, y = self.create_training_data()
-			self.train_model(x, y)
 			self.clean_files()
 			self.save_self_to_json()
 

@@ -6,12 +6,25 @@ import numpy as np
 import json
 import time
 import os
+import random
 
 # import tensorflow as tf
 
+def chunker(l, return_list_size):
+	i = 0
+	while i < len(l):
+		new_i = i + return_list_size
+		yield l[i:new_i]
+		i = new_i
 
-for i in tqdm(range(50, 100)):
+li = [random.random() for i in range(int(1000 + random.random() * 1000))]
+tqdm_bar = tqdm(total=int(len(li) / 100) + 1)
+for l in chunker(li, 100):
+	tqdm_bar.update(1)
 	time.sleep(0.1)
+
+# for i in tqdm(range(50, 100)):
+# 	time.sleep(0.1)
 
 # f = open('game_training_data/1234_0.csv', 'r')
 # for line in f:

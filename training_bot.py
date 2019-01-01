@@ -84,8 +84,11 @@ while True:
         f.write(str(command) + ',' + ','.join(str(item) for item in data) + '\n')
         f.flush()
 
-    if me.halite_amount >= 1000 and turn_percentage <= 0.8 and len(me.get_ships()) < 4:
+    # if me.halite_amount >= 1000 and turn_percentage <= 0.8 and len(me.get_ships()) < 4:
+    #     command_queue.append(me.shipyard.spawn())
+    if len(me.get_ships()) < 1 and me.halite_amount >= constants.SHIP_COST:
         command_queue.append(me.shipyard.spawn())
+
 
     # Send your moves back to the game environment, ending this turn.
     game.end_turn(command_queue)
