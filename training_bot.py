@@ -49,10 +49,10 @@ while True:
     command_queue = []
 
     mapData = DataGen.construct_map_data(me)
-    world_data = DataGen.world_data(game, me, constants.MAX_TURNS)
     haliteTracker = HaliteTracker(me.halite_amount)
 
     for ship in me.get_ships():
+        world_data = DataGen.world_data(game, me, constants.MAX_TURNS, ship)
         data = DataGen.generate_data(mapData, game_map, ship, SIZE)
 
         command = shipModel.predict(data, world_data)

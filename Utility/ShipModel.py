@@ -64,7 +64,7 @@ class ShipModel:
 
 		cnn = keras.layers.Flatten()(cnn)
 
-		world_data_input_layer = keras.layers.Input(shape=(2,))
+		world_data_input_layer = keras.layers.Input(shape=(3,))
 		model = keras.layers.Concatenate()([cnn, world_data_input_layer])
 
 		model = keras.layers.Dense(512)(model)

@@ -8,11 +8,12 @@ def construct_map_data(me):
 	    [d.position for d in list(me.get_dropoffs())] + [me.shipyard],
 	    [s.position for s in list(me.get_ships())])
 
-def world_data(game, me, max_turns):
+def world_data(game, me, max_turns, ship):
 	rounded_halite = round4(me.halite_amount, 1000000)
 	turn_percentage = round4(game.turn_number, max_turns)
-
-	return rounded_halite, turn_percentage
+	ship_halite = round4(ship.halite_amount, 1000)
+	
+	return rounded_halite, turn_percentage, ship_halite
 
 def generate_data(mapData, game_map, ship, size):
 	data = []

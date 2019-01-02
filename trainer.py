@@ -99,7 +99,7 @@ class Trainer:
 		r = [] # reward
 
 		for file_name in tqdm(file_names, desc='Collecting Training Data', ascii=True):
-			reward = float(file_name.split('_')[-2]) / 1000
+			reward = float(file_name.split('_')[-2]) / 1000.0
 			f = open(file_name, 'r')
 
 			for line in f:
@@ -107,7 +107,7 @@ class Trainer:
 
 				y.append([1 if y_val == i else 0 for i in range(6)])
 				x_world.append([float(i) for i in line.split('[')[0][:-1].split(',')][1:])
-				x_map.append(json.loads('[' + ','.join(line.split(',')[3:]) +']'))
+				x_map.append(json.loads('[' + ','.join(line.split(',')[4:]) +']'))
 				r.append(reward)
 
 			f.close()
@@ -212,12 +212,17 @@ class Trainer:
 			file_name = os.path.join(self.data_dir, f'{self.replay_name}_{winning_player}.csv')
 			if os.path.isfile(file_name):
 				# rename file to include the halite collected
-				new_file_name = os.path.join(self.data_dir, f'{self.replay_name}_{halite_collected}_{winning_player}.csv')
-				os.rename(file_name, new_file_name)
+				try:
+					new_file_name = os.path.join(self.data_dir, f'{self.replay_name}_{halite_collected}_{winning_player}.csv')
+					os.rename(file_name, new_file_name)
 
-				self.data_files.append(new_file_name)
+					self.data_files.append(new_file_name)
+				except:
+					os.remove(file_name)
 			else:
 				print(f'ERROR: {file_name} not found')
+
+		# todo: delete invalid files
 
 		self.halite_collected += halite_collected
 		self.games_played += 1
@@ -287,7 +292,7 @@ class Trainer:
 		self.data_files = os.listdir(self.data_dir)
 		self.data_files = [f'{self.data_dir}{file_name}' for file_name in self.data_files]
 
-		for i in tqdm(range(len(self.data_files) - 1, 1500), desc='One Player One Ship Collection Games', ascii=True):
+		for i in tqdm(range(len(self.data_files) - 1, 15000), desc='One Player One Ship Collection Games', ascii=True):
 			self.replay_name = str(time.time())
 			self.dimension = 32	
 			self.run_game()

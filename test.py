@@ -10,14 +10,16 @@ import random
 
 # import tensorflow as tf
 
-t = '1,0.004,0.02,[[0.051, 0, 0], [0.044, 0, 0], [0.063, 0, 0], [0.124, 0, 0], [0.151, 0, 0]]'
+t = '1,0.004,0.02,0.04,[[0.051, 0, 0], [0.044, 0, 0], [0.063, 0, 0], [0.124, 0, 0], [0.151, 0, 0]]'
 y = int(t[0])
-x1 = [float(i) for i in t.split('[')[0][:-1].split(',')][1:]
-x2 = json.loads(','.join(t.split(',')[3:]))
-
 print(y)
+
+x1 = [float(i) for i in t.split('[')[0][:-1].split(',')][1:]
 print(x1)
+
+x2 = json.loads(','.join(t.split(',')[4:]))
 print(x2)
+print(x2[0][0])
 print(type(x2[0][0]))
 
 # def chunker(l, return_list_size, current_index):
