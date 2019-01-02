@@ -3,8 +3,11 @@
 
 from Utility.MapData import MapData
 from Utility.Math import round4
+from Utility import HaliteUtil
+from Utility.HaliteTracker import HaliteTracker
 from hlt.positionals import Direction, Position
 from hlt import constants
+from Utility import DataGen
 import logging
 import random
 import sys
@@ -45,31 +48,6 @@ def acquire_target(game_map, ship_position):
 
 	return best_position
 
-def convert_move_to_ml_command(move):
-	'''
-	COMMANDS
-	0 -> stay still
-	1 -> North
-	2 -> East
-	3 -> South
-	4 -> West
-	5 -> construct drop off
-	'''
-	if type(move) == int:
-		return move
-	elif move == Direction.Still:
-		return 0
-	elif move == Direction.North:
-		return 1
-	elif move == Direction.East:
-		return 2
-	elif move == Direction.South:
-		return 3
-	elif move == Direction.West:
-		return 4
-	else:
-		return 5
-
 while True:
 	game.update_frame()
 	me = game.me
@@ -77,26 +55,13 @@ while True:
 
 	command_queue = []
 
-	mapData = MapData(
-	    [d.position for d in list(me.get_dropoffs())] + [me.shipyard],
-	    [s.position for s in list(me.get_ships())])
-
-	current_halite_amount = me.halite_amount
-	rounded_halite = round4(me.halite_amount, 1000000)
-	turn_percentage = round4(game.turn_number, constants.MAX_TURNS)
-
+	mapData = DataGen.construct_map_data(me)
+	world_data = DataGen.world_data(game, me, constants.MAX_TURNS)
+	haliteTracker = HaliteTracker(me.halite_amount)
+	
 	for ship in me.get_ships():
 		command = 0
-
-		can_build_drop_off = 1 if current_halite_amount >= 4000 else 0
-		world_data = [turn_percentage, rounded_halite, can_build_drop_off]
-		data = []
-
-		for y in range(-1 * SIZE, SIZE):
-		    row = []
-		    for x in range(-1 * SIZE, SIZE):
-		        row.append(mapData.get_data(game_map, ship.position + Position(x,y)) + world_data)
-		    data.append(row)
+		data = DataGen.generate_data(mapData, game_map, ship, SIZE)
 
 		if ship.id not in ship_states:
 			ship_states[ship.id] = COLLECTING
@@ -124,8 +89,7 @@ while True:
 				command = game_map.naive_navigate(ship, me.shipyard.position)
 				command_queue.append(ship.move(command));
 
-		f.write(str(convert_move_to_ml_command(command)) + ',' + ','.join(str(item) for item in data) + '\n')
-		f.flush()
+		DataGen.write_data(f, command, world_data, data)
 
 	if len(me.get_ships()) < 1 and me.halite_amount >= constants.SHIP_COST:
 		command_queue.append(me.shipyard.spawn())

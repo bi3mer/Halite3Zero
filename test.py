@@ -10,20 +10,30 @@ import random
 
 # import tensorflow as tf
 
-def chunker(l, return_list_size, current_index):
-	i = current_index * return_list_size
-	while i < len(l):
-		new_i = i + return_list_size
-		yield l[i:new_i]
-		i = new_i
+t = '1,0.004,0.02,[[0.051, 0, 0], [0.044, 0, 0], [0.063, 0, 0], [0.124, 0, 0], [0.151, 0, 0]]'
+y = int(t[0])
+x1 = [float(i) for i in t.split('[')[0][:-1].split(',')]
+x2 = json.loads(','.join(t.split(',')[3:]))
 
-current_index = 600
-li = [i for i in range(12050)]
-# tqdm_bar = tqdm(total=int(len(li) / 20) + 1 - current_index)
-for l in chunker(li, 20, current_index):
-	print(l)
-	# tqdm_bar.update(1)
-	time.sleep(0.1)
+print(y)
+print(x1)
+print(x2)
+print(type(x2[0][0]))
+
+# def chunker(l, return_list_size, current_index):
+# 	i = current_index * return_list_size
+# 	while i < len(l):
+# 		new_i = i + return_list_size
+# 		yield l[i:new_i]
+# 		i = new_i
+
+# current_index = 600
+# li = [i for i in range(12050)]
+# # tqdm_bar = tqdm(total=int(len(li) / 20) + 1 - current_index)
+# for l in chunker(li, 20, current_index):
+# 	print(l)
+# 	# tqdm_bar.update(1)
+# 	time.sleep(0.1)
 
 # for i in tqdm(range(50, 100)):
 # 	time.sleep(0.1)

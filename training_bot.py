@@ -36,7 +36,7 @@ COMMANDS
 
 shipModel = ShipModel(True, True)
 
-f = open(f"game_training_data/{sys.argv[1]}_{game.my_id}.csv", "w")
+f = open(f'{sys.argv[1]}_{game.my_id}.csv', 'w')
 
 while True:
     game.update_frame()

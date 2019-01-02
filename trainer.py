@@ -89,11 +89,12 @@ class Trainer:
 
 	def clean_files(self):
 		files = glob.glob('replays/*.hlt') + glob.glob('replays/*.log') + glob.glob('game_training_data/*')
-		for f in tqdm(files, desc='Purging Data'):
+		for f in tqdm(files, desc='Purging Data', ascii=True):
 			os.remove(f)
 
 	def create_training_data(self, file_names):
-		x = [] # input data
+		x_world = [] # input world data
+		x_map = [] # input map data
 		y = [] # command
 		r = [] # reward
 
@@ -105,15 +106,17 @@ class Trainer:
 				y_val = int(line[0])
 
 				y.append([1 if y_val == i else 0 for i in range(6)])
-				x.append(json.loads('[' + line[2:].strip() + ']'))
+				x_world.append([float(i) for i in line.split('[')[0][:-1].split(',')])
+				x_map.append(json.loads('[' + ','.join(line.split(',')[3:]) +']'))
 				r.append(reward)
 
 			f.close()
 
-		x = np.array(x)
+		x_world = np.array(x_world)
+		x_map = np.array(x_map)
 		y = np.array(y)
 
-		return shuffle(x, y)
+		return shuffle(x_world, x_map, y)
 
 	def base_command(self):
 		cmd = ['./halite', '--replay-directory', 'replays/', '--width', str(self.dimension), '--height', str(self.dimension)]
@@ -164,9 +167,9 @@ class Trainer:
 
 		for files in self.chunker(self.data_files, files_allowed, current_iteration):
 			print(f'{current_iteration} out of {total_iterations}')
-			x, y = self.create_training_data(files)
+			x_world, x_map, y = self.create_training_data(files)
 			
-			self.shipModel.model.fit(x, y, epochs=4, batch_size=self.batch_size)
+			self.shipModel.model.fit([x_world, x_map], y, epochs=4, batch_size=self.batch_size)
 			self.shipModel.save()
 			current_iteration += 1
 			update_training_index(current_iteration)
@@ -184,7 +187,7 @@ class Trainer:
 			print(f'{current_iteration} out of {total_iterations}')
 			x, y = self.create_training_data(files)
 			
-			self.shipModel.model.fit(x, y, epochs=4, batch_size=512)
+			self.shipModel.model.fit(x, y, epochs=4, batch_size=self.batch_size)
 			self.shipModel.save()
 			current_iteration += 1
 			update_training_index(current_iteration)
@@ -271,6 +274,11 @@ class Trainer:
 		self.phase_one_training_index = iteration
 
 	def phase1(self):
+		'''
+		Phase 1 is to generate 15,000 games where one ship collects as much 
+		halite as possible and then q learn on said games to initialize the 
+		net
+		'''
 		self.generate_command = self.play_one_ship_collect
 		self.turn_count = 300
 		self.data_dir = os.path.join(self.base_dir, 'one_ship_collect/')
@@ -279,7 +287,8 @@ class Trainer:
 		self.data_files = os.listdir(self.data_dir)
 		self.data_files = [f'{self.data_dir}{file_name}' for file_name in self.data_files]
 
-		for i in tqdm(range(len(self.data_files) - 1, 15000), desc='One Player One Ship Collection Games', ascii=True):
+		# 15000
+		for i in tqdm(range(len(self.data_files) - 1, 5), desc='One Player One Ship Collection Games', ascii=True):
 			self.replay_name = str(time.time())
 			self.dimension = 32	
 			self.run_game()
@@ -291,12 +300,26 @@ class Trainer:
 		self.phase1Finished = True
 
 	def phase2(self):
+		'''
+		Phase 2 is to play as many games as necessary for the bot to play against
+		the Sentdex bot till it can win 99 out of 100 games
+		'''
 		pass
 
 	def phase3(self):
+		'''
+		Phase 3 is to self play for as long as posible to get as good as possible
+		at the game. Some stuff needs to be added to play against previous 
+		iterations of the bot as well as the one ship and sentdex bot to make sure
+		that the bot isn't getting worse over time
+		'''
 		pass
 
 	def phase4(self):
+		'''
+		Phase 4 is the mystery phase. We'll see if we ever add this phase to the
+		game
+		'''
 		pass
 
 	def run_loop(self):
