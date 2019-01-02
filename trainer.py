@@ -106,7 +106,7 @@ class Trainer:
 				y_val = int(line[0])
 
 				y.append([1 if y_val == i else 0 for i in range(6)])
-				x_world.append([float(i) for i in line.split('[')[0][:-1].split(',')])
+				x_world.append([float(i) for i in line.split('[')[0][:-1].split(',')][1:])
 				x_map.append(json.loads('[' + ','.join(line.split(',')[3:]) +']'))
 				r.append(reward)
 
@@ -169,7 +169,7 @@ class Trainer:
 			print(f'{current_iteration} out of {total_iterations}')
 			x_world, x_map, y = self.create_training_data(files)
 			
-			self.shipModel.model.fit([x_world, x_map], y, epochs=4, batch_size=self.batch_size)
+			self.shipModel.model.fit([x_map, x_world], y, epochs=1, batch_size=self.batch_size)
 			self.shipModel.save()
 			current_iteration += 1
 			update_training_index(current_iteration)
@@ -287,8 +287,7 @@ class Trainer:
 		self.data_files = os.listdir(self.data_dir)
 		self.data_files = [f'{self.data_dir}{file_name}' for file_name in self.data_files]
 
-		# 15000
-		for i in tqdm(range(len(self.data_files) - 1, 5), desc='One Player One Ship Collection Games', ascii=True):
+		for i in tqdm(range(len(self.data_files) - 1, 1500), desc='One Player One Ship Collection Games', ascii=True):
 			self.replay_name = str(time.time())
 			self.dimension = 32	
 			self.run_game()
@@ -296,6 +295,7 @@ class Trainer:
 			if i % 1000 == 0:
 				self.clean_files()
 
+		print('\n\n\nTraining Phase 1')
 		self.train(self.phase_one_training_index, self.update_phase_one_iteration)
 		self.phase1Finished = True
 

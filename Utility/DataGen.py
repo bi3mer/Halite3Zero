@@ -33,3 +33,12 @@ def write_data(f, command, world_data, data):
 	f.write(','.join(str(item) for item in data))
 	f.write('\n')
 	f.flush()
+
+def write_data_training_bot(f, command, world_data, data):
+	f.write(str(command))
+	f.write(',')
+	f.write(','.join(str(item) for item in world_data))
+	f.write(',')
+	f.write(','.join(str(item) for item in data))
+	f.write('\n')
+	f.flush()

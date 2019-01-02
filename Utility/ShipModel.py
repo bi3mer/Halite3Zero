@@ -76,6 +76,9 @@ class ShipModel:
 		model = keras.layers.Dense(128)(model)
 		model = keras.layers.Activation('relu')(model)
 
+		model = keras.layers.Dense(64)(model)
+		model = keras.layers.Activation('relu')(model)
+
 		model = keras.layers.Dense(6)(model)
 		model = keras.layers.Activation('softmax')(model)
 
@@ -95,9 +98,10 @@ class ShipModel:
 			if os.path.isfile(file_name):
 				self.model.load_weights(file_name)
 
-	def predict(self, data):
+	def predict(self, data, world_data):
 		image_data = np.expand_dims(np.array(data), axis=0)
-		predictions = self.model.predict(image_data)[0]
+		world_data = np.expand_dims(np.array(world_data), axis=0)
+		predictions = self.model.predict([image_data, world_data])[0]
 		prediction = np.argmax(predictions)
 
 		if self.random_exploration_allowed and random.random() < RANDOM_EXPLORATION_CHANCE:

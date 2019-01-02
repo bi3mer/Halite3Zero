@@ -15,5 +15,8 @@ class HaliteTracker:
 
 		return False
 
+	def can_afford_dropoff(self):
+		return self.halite >= DROP_OFF_PRICE
+
 	def can_afford_ship(self):
 		return self.halite >= SHIP_PRICE

@@ -11,6 +11,10 @@ from hlt.positionals import Direction, Position
 from hlt import constants
 from Utility.MapData import MapData
 from Utility.Math import round4
+from Utility import HaliteUtil
+from Utility import DataGen
+from Utility.HaliteTracker import HaliteTracker
+from hlt.positionals import Direction, Position
 import logging
 import random
 import time
@@ -44,51 +48,27 @@ while True:
     game_map = game.game_map
     command_queue = []
 
-    mapData = MapData(
-        [d.position for d in list(me.get_dropoffs())] + [me.shipyard],
-        [s.position for s in list(me.get_ships())])
-
-    current_halite_amount = me.halite_amount
-    rounded_halite = round4(me.halite_amount, 1000000)
-    turn_percentage = round4(game.turn_number, constants.MAX_TURNS)
+    mapData = DataGen.construct_map_data(me)
+    world_data = DataGen.world_data(game, me, constants.MAX_TURNS)
+    haliteTracker = HaliteTracker(me.halite_amount)
 
     for ship in me.get_ships():
-        can_build_drop_off = 1 if current_halite_amount >= 4000 else 0
-        world_data = [turn_percentage, rounded_halite, can_build_drop_off]
-        data = []
+        data = DataGen.generate_data(mapData, game_map, ship, SIZE)
 
-        for y in range(-1 * SIZE, SIZE):
-            row = []
-            for x in range(-1 * SIZE, SIZE):
-                row.append(mapData.get_data(game_map, ship.position + Position(x,y)) + world_data)
-            data.append(row)
-
-        command = shipModel.predict(data)
+        command = shipModel.predict(data, world_data)
         if command == 5:
-            if current_halite_amount >= 4000 and not mapData.contains_structure(game_map, ship.position):
-                current_halite_amount -= 4000
-                command_queue.append(ship.make_dropoff())
+            if not haliteTracker.can_afford_dropoff() and not mapData.contains_structure(game_map, ship.position):
+                haliteTracker.buy_dropoff()
             else:
-                command_queue.append(ship.stay_still())
-        elif command == 1:
-            command_queue.append(ship.move(Direction.North))
-        elif command == 2:
-            command_queue.append(ship.move(Direction.East))
-        elif command == 3:
-            command_queue.append(ship.move(Direction.South))
-        elif command == 4:
-            command_queue.append(ship.move(Direction.West))
-        else:
-            command_queue.append(ship.stay_still())
+                command = 0
 
-        f.write(str(command) + ',' + ','.join(str(item) for item in data) + '\n')
-        f.flush()
+        command_queue.append(HaliteUtil.convert_ml_command_to_move(command, ship))
+        DataGen.write_data_training_bot(f, command, world_data, data)
 
     # if me.halite_amount >= 1000 and turn_percentage <= 0.8 and len(me.get_ships()) < 4:
     #     command_queue.append(me.shipyard.spawn())
     if len(me.get_ships()) < 1 and me.halite_amount >= constants.SHIP_COST:
         command_queue.append(me.shipyard.spawn())
-
 
     # Send your moves back to the game environment, ending this turn.
     game.end_turn(command_queue)
